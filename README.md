@@ -2,6 +2,9 @@
 
 MCS 275 Spring 2024 Project 4 by Abdallah Dalis
 
+- This Project was customizable to my topic of choice with the approval of the Professor.
+
+
 ## Description
 
 The Financial Market Analysis Tool is a Python program designed to analyze stock market data. The tool allows users to view stock charts, insert new stock data, update existing data, and delete data from a SQLite database. It leverages SQLite for data storage and Matplotlib for data visualization.
