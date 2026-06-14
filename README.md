@@ -7,6 +7,8 @@ Originally an MCS 275 (Spring 2024) project by Abdallah Dalis; since extended
 with a time-series analysis layer (technical indicators, risk-return statistics,
 and an ARIMA price forecast).
 
+📄 **Project writeup:** [project4.pdf](project4.pdf)
+
 ## Features
 
 - **CRUD** over an OHLCV stock table (insert / update / delete / view) in SQLite.
