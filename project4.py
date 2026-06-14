@@ -4,8 +4,9 @@
 # are noted in README.md.
 
 import sqlite3
-import matplotlib.pyplot as plt
-import numpy as np
+
+from analysis import analyze, load_prices, add_indicators, summary_stats, forecast
+from plotting import plot_overview
 
 def create_connection(db_file):
     """Create a database connection to the SQLite database specified by db_file."""
@@ -79,62 +80,56 @@ def fetch_data(conn, symbol):
     c.execute('SELECT * FROM stocks WHERE symbol = ?', (symbol,))
     return c.fetchall()
 
-def search(self, key):
-        """Search for a node by key."""
-        if key == self.key:
-            return self.data
-        elif key < self.key and self.left:
-            return self.left.search(key)
-        elif key > self.key and self.right:
-            return self.right.search(key)
-        return None    
+def print_analysis(conn, symbol, forecast_steps=5):
+    """Print risk-return summary + forecast and show the overview chart."""
+    ind, stats, fc = analyze(conn, symbol, forecast_steps=forecast_steps)
 
-def plot_data(data, plot_type='line'):
-    """Plot stock data using Matplotlib. Supports 'line' and 'bar' plot types."""
-    dates = [x[0] for x in data]
-    prices = [x[5] for x in data]  # Close prices
-    plt.figure(figsize=(10, 5))
-    if plot_type == 'line':
-        plt.plot(dates, prices, marker='o')
-    elif plot_type == 'bar':
-        plt.bar(dates, prices)
-    plt.title('Stock Price Over Time')
-    plt.xlabel('Date')
-    plt.ylabel('Price')
-    plt.grid(True)
-    plt.show()
+    print(f"\n=== {symbol} — time-series summary ===")
+    print(f"  Observations:           {stats['observations']} "
+          f"({stats['start']} → {stats['end']})")
+    print(f"  Total return:           {stats['total_return']:+.2%}")
+    print(f"  Annualized return:      {stats['annualized_return']:+.2%}")
+    print(f"  Annualized volatility:  {stats['annualized_volatility']:.2%}")
+    print(f"  Sharpe ratio (rf=0):    {stats['sharpe_ratio']:.2f}")
+    print(f"  Max drawdown:           {stats['max_drawdown']:.2%}")
+
+    print(f"\n  {forecast_steps}-day close forecast:")
+    for d, v in fc.items():
+        print(f"    {d.date()}  {v:.2f}")
+
+    plot_overview(ind, symbol, forecast=fc)
 
 def main():
     """Main function to run the financial market analysis tool."""
     database = "stocks.db"
     conn = create_connection(database)
+    if conn is None:
+        print("Could not open database. Exiting.")
+        return
     create_table(conn)
 
     while True:
         print("\nStock Analysis Tool")
-        print("1. View Stock Chart")
+        print("1. View Stock Chart (price, moving averages, Bollinger, volume)")
         print("2. Insert Stock Data")
         print("3. Update Stock Data")
         print("4. Delete Stock Data")
-        print("5. Exit")
+        print("5. Analyze (time-series stats + forecast)")
+        print("6. Exit")
         choice = input("Enter choice: ")
 
-## Function written by ChatGPT
         if choice == '1':
             while True:  # Keep looping until valid input is provided or user exits
                 try:
-                    symbol = input("Enter stock symbol: ")
-                    data = fetch_data(conn, symbol)
-                    if not data:
-                        raise ValueError(f"Stock symbol '{symbol}' not found in the database.")
-                    plot_type = input("Enter plot type (line/bar): ")
-                    plot_data(data, plot_type)
-                    break  # Exit the loop if plotting is successful
+                    symbol = input("Enter stock symbol: ").upper()
+                    ind, _, fc = analyze(conn, symbol)
+                    plot_overview(ind, symbol, forecast=fc)
+                    break
                 except ValueError as e:
                     print("Error:", e)
                     retry = input("Would you like to retry? (yes/no): ")
                     if retry.lower() != 'yes':
-                        break  # Exit the loop if user chooses not to retry
+                        break
         elif choice == '2':
             while True:  # Keep looping until valid input is provided
                 try:
@@ -184,11 +179,17 @@ def main():
                     if retry.lower() != 'yes':
                         break  # Exit the loop if user chooses not to retry
         elif choice == '5':
-            conn.close() # type: ignore
+            try:
+                symbol = input("Enter stock symbol: ").upper()
+                print_analysis(conn, symbol)
+            except ValueError as e:
+                print("Error:", e)
+        elif choice == '6':
+            conn.close()
             print("Exiting Stock Analysis Tool.")
             break
         else:
-            print("Invalid choice. Please enter a number from 1 to 5.")
+            print("Invalid choice. Please enter a number from 1 to 6.")
 
 
 if __name__ == "__main__":
