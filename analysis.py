@@ -101,6 +101,36 @@ def forecast(df: pd.DataFrame, steps: int = 5) -> pd.Series:
     return pd.Series(vals, index=future_idx, name="forecast")
 
 
+def garch_volatility(df: pd.DataFrame, horizon: int = 5) -> dict:
+    """Fit a GARCH(1,1) on daily returns and return conditional volatility.
+
+    Returns a dict with the annualized conditional-volatility series, the latest
+    value, and an `horizon`-day-ahead annualized volatility forecast. Returns an
+    empty dict if `arch` is unavailable or the fit fails (e.g. too few points).
+    """
+    r = df["close"].pct_change().dropna() * 100  # percent returns for scaling
+    if len(r) < 50:
+        return {}
+    try:
+        from arch import arch_model
+        res = arch_model(r, mean="Constant", vol="Garch", p=1, q=1,
+                         dist="normal").fit(disp="off")
+    except Exception:
+        return {}
+
+    ann = np.sqrt(TRADING_DAYS) / 100  # %-daily -> annualized fraction
+    cond = res.conditional_volatility * ann
+    cond.index = r.index
+    fvar = res.forecast(horizon=horizon, reindex=False).variance.iloc[-1]
+    fc_ann = float(np.sqrt(fvar.mean())) * ann
+    return {
+        "conditional_vol": cond,
+        "latest_annualized_vol": float(cond.iloc[-1]),
+        "forecast_annualized_vol": fc_ann,
+        "params": {k: float(v) for k, v in res.params.items()},
+    }
+
+
 def analyze(conn, symbol: str, forecast_steps: int = 5):
     """Return (indicators_df, stats_dict, forecast_series) for a symbol."""
     df = load_prices(conn, symbol)

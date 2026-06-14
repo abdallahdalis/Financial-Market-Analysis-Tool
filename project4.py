@@ -5,7 +5,8 @@
 
 import sqlite3
 
-from analysis import analyze, load_prices, add_indicators, summary_stats, forecast
+from analysis import (analyze, load_prices, add_indicators, summary_stats,
+                      forecast, garch_volatility)
 from plotting import plot_overview
 
 def create_connection(db_file):
@@ -96,6 +97,12 @@ def print_analysis(conn, symbol, forecast_steps=5):
     print(f"\n  {forecast_steps}-day close forecast:")
     for d, v in fc.items():
         print(f"    {d.date()}  {v:.2f}")
+
+    garch = garch_volatility(load_prices(conn, symbol), horizon=forecast_steps)
+    if garch:
+        print("\n  GARCH(1,1) conditional volatility (annualized):")
+        print(f"    Latest:                 {garch['latest_annualized_vol']:.2%}")
+        print(f"    {forecast_steps}-day-ahead forecast:    {garch['forecast_annualized_vol']:.2%}")
 
     plot_overview(ind, symbol, forecast=fc)
 
